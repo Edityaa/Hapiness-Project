@@ -30,10 +30,11 @@ const LoginScreen = () => {
     <div className="min-h-screen bg-[#08090a] flex items-center justify-center">
       <button
         onClick={handleLogin}
-        className="flex items-center gap-4 bg-white px-6 py-4 rounded-xl font-bold"
+        disabled={isLoading}
+        className="flex items-center gap-3 bg-white px-6 py-4 rounded-xl font-bold"
       >
-        {isLoading ? "Redirecting..." : <GoogleIcon />}
-        Continue with Google
+        <GoogleIcon/>
+        {isLoading ? "Redirecting..." : "Continue with Google"}
       </button>
     </div>
   );
@@ -42,84 +43,95 @@ const LoginScreen = () => {
 /* ---------------- ADD TEAMMATE MODAL ---------------- */
 
 const AddTeammateModal = ({ isOpen, onClose, onAdd }) => {
+
   const [formData, setFormData] = useState({
-    name: "",
-    role: "",
-    birthday: "",
-    email: ""
+    name: '',
+    role: '',
+    birthday: '',
+    email: ''
   });
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/70">
-      <div className="bg-[#0f1115] p-8 rounded-3xl w-full max-w-md">
-        <h2 className="text-2xl text-white mb-6 font-bold">Add Teammate</h2>
+
+      <div className="bg-[#0f1115] p-10 rounded-3xl w-full max-w-lg">
+
+        <h2 className="text-white text-2xl font-bold mb-6">Add Contact</h2>
 
         <form
           onSubmit={(e) => {
             e.preventDefault();
+
             onAdd(formData);
-            onClose();
+
             setFormData({
-              name: "",
-              role: "",
-              birthday: "",
-              email: ""
+              name:'',
+              role:'',
+              birthday:'',
+              email:''
             });
+
+            onClose();
           }}
           className="space-y-4"
         >
+
           <input
             required
             placeholder="Name"
-            className="w-full p-3 rounded-xl bg-white/5 text-white"
             value={formData.name}
             onChange={(e)=>setFormData({...formData,name:e.target.value})}
+            className="w-full p-3 rounded-xl bg-white/5 text-white"
           />
 
           <input
             required
             placeholder="Role"
-            className="w-full p-3 rounded-xl bg-white/5 text-white"
             value={formData.role}
             onChange={(e)=>setFormData({...formData,role:e.target.value})}
+            className="w-full p-3 rounded-xl bg-white/5 text-white"
           />
 
           <input
-            type="email"
             required
+            type="email"
             placeholder="Email"
-            className="w-full p-3 rounded-xl bg-white/5 text-white"
             value={formData.email}
             onChange={(e)=>setFormData({...formData,email:e.target.value})}
+            className="w-full p-3 rounded-xl bg-white/5 text-white"
           />
 
           <input
-            type="date"
             required
-            className="w-full p-3 rounded-xl bg-white/5 text-white"
+            type="date"
             value={formData.birthday}
             onChange={(e)=>setFormData({...formData,birthday:e.target.value})}
+            className="w-full p-3 rounded-xl bg-white/5 text-white"
           />
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-4 pt-4">
+
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 text-slate-400"
+              className="flex-1 text-gray-400"
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              className="flex-1 bg-indigo-600 text-white rounded-xl py-2"
+              className="flex-1 bg-indigo-600 py-3 rounded-xl text-white"
             >
-              Save
+              Add
             </button>
+
           </div>
+
         </form>
+
       </div>
     </div>
   );
@@ -137,9 +149,10 @@ export default function App() {
 
   const [sendingKey,setSendingKey] = useState(null);
   const [sentKeys,setSentKeys] = useState([]);
+
   const [toast,setToast] = useState(null);
 
-  /* -------- LOAD FROM LOCAL STORAGE -------- */
+  /* ---------------- LOAD FROM LOCAL STORAGE ---------------- */
 
   useEffect(()=>{
 
@@ -153,7 +166,14 @@ export default function App() {
 
   },[session]);
 
-  /* -------- ADD TEAMMATE -------- */
+  /* ---------------- SAVE TO LOCAL STORAGE ---------------- */
+
+  useEffect(()=>{
+    localStorage.setItem("teammates",JSON.stringify(teammates));
+  },[teammates]);
+
+
+  /* ---------------- ADD CONTACT ---------------- */
 
   const handleAdd = (data)=>{
 
@@ -166,27 +186,21 @@ export default function App() {
     const newTeammate = {
       ...data,
       initials,
-      id: Date.now()
+      id:Date.now()
     };
 
-    const updated = [newTeammate,...teammates];
-
-    setTeammates(updated);
-
-    localStorage.setItem(
-      "teammates",
-      JSON.stringify(updated)
-    );
+    setTeammates(prev=>[newTeammate,...prev]);
   };
 
-  /* -------- SEND EMAIL -------- */
 
-  const handleSendBirthday = async(teammate)=>{
+  /* ---------------- SEND EMAIL ---------------- */
 
-    const key = teammate.email || teammate.name;
+  const handleSendBirthday = async (t)=>{
 
-    if(!teammate.email){
-      setToast({message:"No email address",type:"error"});
+    const key = t.email || t.name;
+
+    if(!t.email){
+      setToast({message:"No email",type:"error"});
       return;
     }
 
@@ -196,106 +210,145 @@ export default function App() {
 
       const res = await fetch("/api/send-birthday",{
         method:"POST",
-        headers:{"Content-Type":"application/json"},
+        headers:{ "Content-Type":"application/json" },
         body:JSON.stringify({
-          toEmail:teammate.email,
-          toName:teammate.name,
+          toEmail:t.email,
+          toName:t.name,
           fromName:session.user.name
         })
       });
 
       if(res.ok){
+
         setSentKeys(prev=>[...prev,key]);
-        setToast({message:`Sent to ${teammate.name}`,type:"success"});
+
+        setToast({
+          message:`Birthday wishes sent to ${t.name}`,
+          type:"success"
+        });
+
+      }else{
+
+        setToast({
+          message:"Email failed",
+          type:"error"
+        });
+
       }
 
     }catch{
-      setToast({message:"Network error",type:"error"});
+
+      setToast({
+        message:"Network error",
+        type:"error"
+      });
+
     }
 
     setSendingKey(null);
+
   };
 
-  /* -------- LOADING -------- */
+
+  /* ---------------- LOADING ---------------- */
 
   if(status==="loading"){
+
     return(
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        Loading...
+      <div className="min-h-screen bg-[#08090a] flex items-center justify-center">
+        <Loader className="animate-spin text-white"/>
       </div>
     );
+
   }
+
 
   if(!session) return <LoginScreen/>;
 
-  const firstName = session.user.name?.split(" ")[0];
 
-  /* -------- APP UI -------- */
+  const firstName = session.user.name?.split(" ")[0] || "User";
 
-  return(
 
-  <div className="min-h-screen bg-[#08090a] text-white p-10">
+  /* ---------------- UI ---------------- */
 
-    <h1 className="text-5xl font-black mb-8">
-      Hello {firstName}
-    </h1>
+  return (
 
-    <button
-      onClick={()=>setIsModalOpen(true)}
-      className="mb-8 bg-indigo-600 px-6 py-3 rounded-xl"
-    >
-      Add Teammate
-    </button>
+    <div className="min-h-screen bg-[#08090a] text-white p-10">
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <h1 className="text-5xl font-black mb-10">
+        Hello {firstName}
+      </h1>
 
-      {teammates.map(t=>{
 
-        const key = t.email || t.name;
+      <button
+        onClick={()=>setIsModalOpen(true)}
+        className="bg-indigo-600 px-6 py-3 rounded-xl mb-10"
+      >
+        Add Contact
+      </button>
 
-        return(
 
-        <div
-          key={t.id}
-          className="bg-[#0c0d0f] p-6 rounded-2xl border border-white/10"
-        >
+      <div className="grid md:grid-cols-2 gap-6">
 
-          <h3 className="text-xl font-bold">{t.name}</h3>
+        {teammates.map(t=>{
 
-          <p className="text-slate-400">{t.role}</p>
+          const key = t.email || t.name;
 
-          <p className="text-indigo-400">{t.birthday}</p>
+          return(
 
-          <button
-            onClick={()=>handleSendBirthday(t)}
-            disabled={sendingKey===key || sentKeys.includes(key)}
-            className="mt-4 bg-indigo-600 px-4 py-2 rounded-xl"
-          >
+            <div
+              key={t.id}
+              className="bg-[#0c0d0f] p-6 rounded-3xl border border-white/10"
+            >
 
-            {sendingKey===key
-              ? "Sending..."
-              : sentKeys.includes(key)
-              ? "Sent!"
-              : "Send Wishes"}
+              <h3 className="text-xl font-bold">{t.name}</h3>
 
-          </button>
+              <p className="text-gray-400">{t.role}</p>
 
-        </div>
+              <p className="text-gray-400">{t.email}</p>
 
-        )
+              <p className="text-indigo-400">{t.birthday}</p>
 
-      })}
+              <button
+                onClick={()=>handleSendBirthday(t)}
+                disabled={sendingKey===key || sentKeys.includes(key)}
+                className="mt-4 bg-indigo-600 px-4 py-2 rounded-xl flex items-center gap-2"
+              >
+
+                {sendingKey===key
+                  ? <Loader size={14} className="animate-spin"/>
+                  : sentKeys.includes(key)
+                    ? <CheckCircle size={14}/>
+                    : <Gift size={14}/>
+                }
+
+                {sentKeys.includes(key) ? "Sent" : "Send Wishes"}
+
+              </button>
+
+            </div>
+
+          );
+
+        })}
+
+      </div>
+
+
+      <AddTeammateModal
+        isOpen={isModalOpen}
+        onClose={()=>setIsModalOpen(false)}
+        onAdd={handleAdd}
+      />
+
+
+      <button
+        onClick={()=>signOut()}
+        className="fixed bottom-6 right-6 bg-red-600 px-5 py-3 rounded-xl"
+      >
+        Sign Out
+      </button>
 
     </div>
-
-    <AddTeammateModal
-      isOpen={isModalOpen}
-      onClose={()=>setIsModalOpen(false)}
-      onAdd={handleAdd}
-    />
-
-  </div>
-
   );
-
 }
