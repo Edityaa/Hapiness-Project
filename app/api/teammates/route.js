@@ -1,24 +1,39 @@
-import connectDB from '@/lib/mongodb';
-import Teammate from '@/models/Teammate';
 import { NextResponse } from 'next/server';
 
+// In-memory storage (acts like temporary database)
+let teammates = [];
+
+// GET all teammates
 export async function GET() {
   try {
-    await connectDB();
-    const data = await Teammate.find({}).sort({ createdAt: -1 });
-    return NextResponse.json(data);
+    return NextResponse.json(teammates);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }
 
+// ADD teammate
 export async function POST(req) {
   try {
-    await connectDB();
     const body = await req.json();
-    const newEntry = await Teammate.create(body);
+
+    const newEntry = {
+      ...body,
+      id: Date.now(),
+      createdAt: new Date()
+    };
+
+    teammates.unshift(newEntry);
+
     return NextResponse.json(newEntry, { status: 201 });
+
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }
